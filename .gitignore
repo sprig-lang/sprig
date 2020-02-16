@@ -1,0 +1,10 @@
+.vscode/
+.vs/
+**/build/
+**/*.o
+**/*.a
+**/*.so
+**/*.exe
+**/*.dll
+**/*.lib
+**/*.out
