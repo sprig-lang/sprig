@@ -16,7 +16,7 @@ enum {
     sp_ALIGN_DEFAULT = 0
 };
 
-sp_MemPool* sp_createMemPool(void);
+sp_MemPool* sp_createMemPool(sp_Promise* p);
 
 void sp_destroyMemPool(sp_MemPool* mp);
 

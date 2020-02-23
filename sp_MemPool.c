@@ -11,7 +11,7 @@
     .src = SRC_LOCATION                                 \
 }
 
-sp_MemPool* sp_createMemPool(void){
+sp_MemPool* sp_createMemPool(sp_Promise* p){
     // dummy return value, for now we just use the standard memory pool
     return (sp_MemPool*)1;
 }
@@ -43,17 +43,30 @@ void sp_memFree(sp_MemPool* mp, void* mem) {
 #ifdef sp_TESTS
 
 typedef struct {
+    sp_Defer d;
+    sp_MemPool* mp;
+} TestDefer;
+void TestDefer_execute(sp_Defer* d){
+    TestDefer* td = (TestDefer*)d;
+    sp_destroyMemPool(td->mp);
+}
+
+typedef struct {
     sp_Action actionHdr;
     sp_MemPool* mp;
+    TestDefer   td;
 } TestAction;
 
 static void spTest_MemPool_creation(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
-    ta->mp = sp_createMemPool();
+    ta->mp = sp_createMemPool(p);
+    ta->td = (TestDefer){.d = {.execute = TestDefer_execute}, .mp = ta->mp};
+    p->onCancel(p, &ta->td);
 }
 
 static void spTest_MemPool_destruction(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
+    p->cancelDefer(p, &ta->td);
     sp_destroyMemPool(ta->mp);
 }
 

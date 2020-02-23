@@ -8,13 +8,10 @@ typedef struct sp_Class sp_Class;
 
 struct sp_Class {
     // Classes are objects
-    sp_Object _;
+    sp_Object obj;
 
     // Allocation size of a complete sp_Object with this class
     size_t fullObjectSize;
-
-    // Tags attached to this class
-    sp_Dict* tags;
 
     // Methods
     sp_Dict* methods;
