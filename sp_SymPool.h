@@ -13,7 +13,7 @@ typedef struct sp_SymPool sp_SymPool;
 
 #define SYM_MAX UINT32_MAX
 
-sp_SymPool* sp_createSymPool(sp_MemPool* mp);
+sp_SymPool* sp_createSymPool(sp_MemPool* mp, sp_Promise* p);
 void        sp_destroySymPool(sp_SymPool* sp);
 sp_Sym      sp_getSym(sp_SymPool* sp, char const* str, sp_Promise* p);
 char const* sp_getStr(sp_SymPool* sp, sp_Sym sym, sp_Promise* p);

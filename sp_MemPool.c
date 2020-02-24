@@ -46,7 +46,7 @@ typedef struct {
     sp_Defer d;
     sp_MemPool* mp;
 } TestDefer;
-void TestDefer_execute(sp_Defer* d){
+static void TestDefer_execute(sp_Defer* d){
     TestDefer* td = (TestDefer*)d;
     sp_destroyMemPool(td->mp);
 }
@@ -61,12 +61,12 @@ static void spTest_MemPool_creation(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
     ta->mp = sp_createMemPool(p);
     ta->td = (TestDefer){.d = {.execute = TestDefer_execute}, .mp = ta->mp};
-    p->onCancel(p, &ta->td);
+    p->onCancel(p, (sp_Defer*)&ta->td);
 }
 
 static void spTest_MemPool_destruction(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
-    p->cancelDefer(p, &ta->td);
+    p->cancelDefer(p, (sp_Defer*)&ta->td);
     sp_destroyMemPool(ta->mp);
 }
 

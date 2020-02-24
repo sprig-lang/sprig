@@ -74,6 +74,10 @@ static void beforeExit(sp_Promise* p, sp_Defer* d){
     NL_LIST_LINK(d, &tp->beforeExitDefers);
 }
 
+static void cancelDefer(sp_Promise* p, sp_Defer* d){
+    NL_LIST_UNLINK(d);
+}
+
 bool sp_try(sp_Action* action, void** out) {
     jmp_buf jmp;
     TryPromise tp = {
@@ -83,7 +87,8 @@ bool sp_try(sp_Action* action, void** out) {
             .cancel = cancel,
             .onComplete = onComplete,
             .onCancel = onCancel,
-            .beforeExit = beforeExit
+            .beforeExit = beforeExit,
+            .cancelDefer = cancelDefer
         }
     };
     if(setjmp(jmp)){

@@ -6,6 +6,7 @@
 
 static fnoreturn void runAllTests(sp_Action* a, sp_Promise* p){
     spTest_MemPool(a, p);
+    spTest_SymPool(a, p);
     p->complete(p, NULL);
 }
 

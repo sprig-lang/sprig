@@ -1,4 +1,5 @@
 #include "sp_SymPool.h"
+#include "sp_Test.h"
 #include <string.h>
 
 struct sp_SymPool {
@@ -15,7 +16,7 @@ typedef struct {
     void* mem;
 } FreeDefer;
 
-void FreeDefer_execute(sp_Defer* d){
+static void FreeDefer_execute(sp_Defer* d){
     FreeDefer* fd = (FreeDefer*)d;
     sp_memFree(fd->mp, fd->mem);
 }
@@ -23,7 +24,7 @@ void FreeDefer_execute(sp_Defer* d){
 sp_SymPool* sp_createSymPool(sp_MemPool* mp, sp_Promise* p) {
     sp_SymPool* sp = sp_memAlloc(mp, sizeof(sp_SymPool), 0, p);
     FreeDefer d = {.d = {.execute = FreeDefer_execute }, .mp = mp, .mem = sp};
-    p->onCancel(p, &d);
+    p->onCancel(p, (sp_Defer*)&d);
 
     size_t cap = 256;
     char*  buf = sp_memAlloc(mp, cap, 0, p);
@@ -33,7 +34,7 @@ sp_SymPool* sp_createSymPool(sp_MemPool* mp, sp_Promise* p) {
     sp->strBufTop = 0;
     sp->strBufCap = cap;
 
-    p->cancelDefer(p, &d);
+    p->cancelDefer(p, (sp_Defer*)&d);
 
     return sp;
 }
@@ -96,7 +97,7 @@ typedef struct {
     sp_Defer d;
     sp_SymPool* sp;
 } TestDefer;
-void TestDefer_execute(sp_Defer* d){
+static void TestDefer_execute(sp_Defer* d){
     TestDefer* td = (TestDefer*)d;
     sp_destroySymPool(td->sp);
 }
@@ -111,24 +112,24 @@ typedef struct {
     sp_Sym s3;
 } TestAction;
 
-static spTest_SymPool_creation(sp_Action* a, sp_Promise* p){
+static void spTest_SymPool_creation(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
     sp_MemPool* mp = sp_createMemPool(p);
     sp_SymPool* sp = sp_createSymPool(mp, p);
-    sp_assert(sp != null, p);
+    sp_assert(sp != NULL, p);
 
     ta->sp = sp;
     ta->td = (TestDefer){.d = {.execute = TestDefer_execute}, .sp = sp};
-    p->onCancel(p, &ta->td);
+    p->onCancel(p, (sp_Defer*)&ta->td);
 }
 
-static spTest_SymPool_destruction(sp_Action* a, sp_Promise* p){
+static void spTest_SymPool_destruction(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
-    p->cancelDefer(p, &ta->td);
+    p->cancelDefer(p, (sp_Defer*)&ta->td);
     sp_destroySymPool(ta->sp);
 }
 
-static spTest_SymPool_getSym(sp_Action* a, sp_Promise* p){
+static void spTest_SymPool_getSym(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
     sp_Sym s1 = sp_getSym(ta->sp, "sym1", p);
     sp_Sym s2 = sp_getSym(ta->sp, "sym2", p);
@@ -147,27 +148,28 @@ static spTest_SymPool_getSym(sp_Action* a, sp_Promise* p){
     sp_assert(c3 == s3, p);
 }
 
-static spTest_SymPool_getStr(sp_Action* a, sp_Promise* p){
+static void spTest_SymPool_getStr(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
 
-    sp_Sym* str1 = sp_getStr(ta->sp, ta->s1, p);
-    sp_Sym* str2 = sp_getStr(ta->sp, ta->s2, p);
-    sp_Sym* str3 = sp_getStr(ta->sp, ta->s3, p);
+    char const* str1 = sp_getStr(ta->sp, ta->s1, p);
+    char const* str2 = sp_getStr(ta->sp, ta->s2, p);
+    char const* str3 = sp_getStr(ta->sp, ta->s3, p);
 
     sp_assert(!strcmp(str1, "sym1"), p);
     sp_assert(!strcmp(str2, "sym2"), p);
     sp_assert(!strcmp(str3, "sym3"), p);
 }
 
-static spTest_SymPool_all(sp_Action* a, sp_Promise* p){
+static fnoreturn void spTest_SymPool_all(sp_Action* a, sp_Promise* p){
     spTest_SymPool_creation(a, p);
     spTest_SymPool_getSym(a, p);
     spTest_SymPool_getStr(a, p);
     spTest_SymPool_destruction(a, p);
+    p->complete(p, NULL);
 }
 
 void spTest_SymPool(sp_Action* a, sp_Promise* p) {
-    TestAction ta = {.actionHdr = { .execute = spTest_SymPool_all } };
+    TestAction ta = {.a = { .execute = spTest_SymPool_all } };
     void* r;
     if(sp_try((sp_Action*)&ta, &r)){
         p->complete(p, r);

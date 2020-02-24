@@ -14,6 +14,7 @@
 } while(0)
 
 void spTest_MemPool(sp_Action* a, sp_Promise* p);
+void spTest_SymPool(sp_Action* a, sp_Promise* p);
 
 #endif // sp_TESTS
 #endif // sp_Test_h
