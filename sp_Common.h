@@ -16,7 +16,7 @@
 #define CCAT(A, B) _CCAT(A, B)
 #define SRC_LOCATION (CSTR(__FILE__) ":" CSTR(__LINE__))
 
-// link/unlinke a node from a next/link form of linked list
+// link/unlink a node from a next/link form of linked list
 #define NL_LIST_LINK(NODE, LIST) do {                           \
     (NODE)->next = *(LIST);                                     \
     (NODE)->link = (LIST);                                      \

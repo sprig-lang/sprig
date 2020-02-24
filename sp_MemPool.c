@@ -11,6 +11,16 @@
     .src = SRC_LOCATION                                 \
 }
 
+void sp_FreeDefer_execute(sp_Defer* d) {
+    sp_FreeDefer* fd = (sp_FreeDefer*)d;
+    sp_memFree(fd->mp, fd->mem);
+}
+
+void sp_FreeVisitor_visit(sp_Visitor* v, void* val) {
+    sp_FreeVisitor* fv = (sp_FreeVisitor*)v;
+    sp_memFree(fv->mp, val);
+}
+
 sp_MemPool* sp_createMemPool(sp_Promise* p){
     // dummy return value, for now we just use the standard memory pool
     return (sp_MemPool*)1;
