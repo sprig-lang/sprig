@@ -1,4 +1,5 @@
 #include <string.h>
+#include "sp_List.t.h"
 
 #ifndef LIST_INDEX_OUT_OF_RANGE_ERROR
     #define LIST_INDEX_OUT_OF_RANGE_ERROR (sp_Error) {      \
@@ -85,5 +86,5 @@ static inline unsigned sp_ListF(T, count)(sp_ListT(T)* ls) {
 
 static inline void sp_ListF(T, accept)(sp_ListT(T)* ls, sp_Visitor* vis) {
     for(unsigned i = 0 ; i < ls->cnt ; i++)
-        vis->visit(vis, ls->buf[i]);
+        vis->visit(vis, &ls->buf[i]);
 }

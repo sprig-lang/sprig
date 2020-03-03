@@ -9,6 +9,14 @@ typedef struct   sp_Class  sp_Class;
 typedef struct   sp_Method sp_Method;
 typedef struct   sp_SrcLoc sp_SrcLoc;
 typedef uint32_t sp_Instr;
+typedef enum     sp_OpCode sp_OpCode;
+
+
+struct sp_SrcLoc {
+    sp_Sym   file;
+    unsigned line;
+    unsigned column;
+};
 
 struct sp_Class {
     // Classes are objects
@@ -42,12 +50,9 @@ struct sp_Class {
 
     // Finalizer callback
     void (*finl)(sp_Ref r, sp_Engine* e);
-};
 
-struct sp_SrcLoc {
-    sp_Sym   file;
-    unsigned line;
-    unsigned column;
+    // Free this class
+    void (*destroy)(sp_Class* cls, sp_Compiler* com);
 };
 
 struct sp_Method {
@@ -67,8 +72,29 @@ struct sp_Method {
     // Bytecode
     unsigned  instrCount;
     sp_Instr* instrArray;
+
+    // Destroy this method
+    void (*destroy)(sp_Method* mth, sp_Compiler* com);
 };
 
+enum sp_OpCode {
+    sp_OpCode_NOP,
+    sp_OpCode_ACTIVATE,
+    sp_OpCode_INVOKE,
+    sp_OpCode_LCL_LOAD,
+    sp_OpCode_LCL_SAVE,
+    sp_OpCode_OBJ_LOAD,
+    sp_OpCode_OBJ_SAVE,
+    sp_OpCode_PUSH_METHOD,
+    sp_OpCode_PUSH_CONST,
+    sp_OpCode_PUSH_NUMBER,
+    sp_OpCode_PUSH_STRING,
+    sp_OpCode_PUSH_SYMBOL,
+    sp_OpCode_USE
+};
 
+#define sp_instr(OPCODE, OPERAND) ((sp_Instr)(OPERAND) << 8 | (sp_Instr)(OPCODE))
+#define sp_getOpCode(INSTR)       ((INSTR) & 0xF)
+#define sp_getOperand(INSTR)      ((INSTR) >> 8)
 
 #endif // sp_Class_h

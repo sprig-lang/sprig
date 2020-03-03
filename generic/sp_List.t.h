@@ -1,7 +1,7 @@
-#include "sp_List.h"
-#include "sp_MemPool.h"
-#include "sp_Promise.h"
-#include "sp_Visitor.h"
+#include "../sp_List.h"
+#include "../sp_MemPool.h"
+#include "../sp_Promise.h"
+#include "../sp_Visitor.h"
 
 typedef struct sp_ListT(T) sp_ListT(T);
 

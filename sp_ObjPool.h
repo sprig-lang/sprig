@@ -1,5 +1,6 @@
 #ifndef sp_ObjPool_h
 #define sp_ObjPool_h
+#include "sp_Object.h"
 
 typedef struct sp_ObjPool sp_ObjPool;
 typedef struct sp_Anchor  sp_Anchor;

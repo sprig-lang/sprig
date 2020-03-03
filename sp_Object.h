@@ -18,8 +18,7 @@ struct sp_Object {
     // depending on which pool/heap the object is currently in
     unsigned flags: 8;
 
-    // Contains object's content
-    uint8_t data[];
+    // Object content follows
 };
 
 #endif // sp_Object_h
