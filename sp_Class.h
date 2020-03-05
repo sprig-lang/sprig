@@ -48,8 +48,9 @@ struct sp_Class {
     // Visitor callback
     void (*accept)(sp_Ref r, sp_Visitor* v);
 
-    // Finalizer callback
-    void (*finl)(sp_Ref r, sp_Engine* e);
+    // Object creation and finalization
+    void (*makeInstance)(sp_Ref r, sp_Engine* eng);
+    void (*finlInstance)(sp_Ref r, sp_Engine* eng);
 
     // Free this class
     void (*destroy)(sp_Class* cls, sp_Compiler* com);

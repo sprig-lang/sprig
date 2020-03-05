@@ -13,7 +13,7 @@ struct sp_ObjPool {
     void*  (*finl)(sp_ObjPool* op);
 };
 
-sp_ObjPool* sp_createMasterHeap(sp_MemPool* mp, sp_Promise* p);
-sp_ObjPool* sp_createIncubator(sp_ObjPool* op, sp_Promise* p);
+sp_ObjPool* sp_createHeapPool(sp_MemPool* mp, sp_Promise* p);
+sp_ObjPool* sp_createTaskPool(sp_ObjPool* op, sp_Promise* p);
 
 #endif // sp_ObjPool_h

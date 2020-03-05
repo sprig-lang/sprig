@@ -64,7 +64,7 @@ sp_Sym sp_getSym(sp_SymPool* sp, char const* str, sp_Promise* p) {
     }
 
     memcpy(&sp->strBuf[sp->strBufTop], str, len);
-    if(sp->strBufTop > SYM_MAX){
+    if(sp->strBufTop >= SYM_MAX){
         p->cancel(p, &(sp_Error){
             .tag = "SYM_MAX",
             .msg = "Symbol space is full",
