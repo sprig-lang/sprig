@@ -1,10 +1,11 @@
 #ifndef sp_Class_h
 #define sp_Class_h
 #include "sp_Object.h"
+#include "sp_ObjPool.h"
 #include "sp_Visitor.h"
-#include "sp_Engine.h"
 #include "sp_Index.h"
 
+typedef struct   sp_Engine sp_Engine;
 typedef struct   sp_Class  sp_Class;
 typedef struct   sp_Method sp_Method;
 typedef struct   sp_SrcLoc sp_SrcLoc;
@@ -26,7 +27,7 @@ struct sp_Class {
     sp_SrcLoc loc;
 
     // Object mutability
-    bool mutable;
+    bool isMutable;
 
     // Allocation size of a complete sp_Object with this class
     size_t fullObjectSize;
@@ -44,13 +45,11 @@ struct sp_Class {
     // Constants
     unsigned constCount;
     sp_Ref*  constArray;
-
-    // Visitor callback
-    void (*accept)(sp_Ref r, sp_Visitor* v);
-
-    // Object creation and finalization
+    
+    // Object creation, finalization, and traversal functions
     void (*makeInstance)(sp_Ref r, sp_Engine* eng);
     void (*finlInstance)(sp_Ref r, sp_Engine* eng);
+    void (*travInstance)(sp_Ref r, sp_Visitor* v);
 
     // Free this class
     void (*destroy)(sp_Class* cls, sp_Compiler* com);

@@ -1,4 +1,5 @@
 #include "sp_Index.h"
+#include "sp_Engine.h"
 #include <limits.h>
 
 struct sp_Index {
