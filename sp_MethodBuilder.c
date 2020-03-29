@@ -262,14 +262,14 @@ static fnoreturn void spTest_MethodBuilder_build(sp_Action* a, sp_Promise* p){
     sp_destroyMemPool(mp);
     p->cancelDefer(p, destroyMemPoolDefer);
 
-    p->yieldRaw(p, NULL);
+    p->yield(p, NULL);
 }
 
 void spTest_MethodBuilder(sp_Action* a, sp_Promise* p) {
     TestAction ta = {.actionHdr = { .execute = spTest_MethodBuilder_build } };
     void* r; sp_Error* e;
-    if(sp_tryRaw((sp_Action*)&ta, &r, &e)){
-        p->yieldRaw(p, r);
+    if(sp_try((sp_Action*)&ta, &r, &e)){
+        p->yield(p, r);
     }
     else {
         p->abort(p, e);

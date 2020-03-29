@@ -106,7 +106,7 @@ static void doGc(sp_ObjPool* op){
     // Scan everything, starting at roots
     sp_Anchor* ancIt = op->ancs;
     while(ancIt){
-        scanFrame(op, (RealObject*)sp_ptrToObj(ancIt->obj));
+        scanFrame(op, (RealObject*)sp_ptrToObj(*ancIt->ptr));
         ancIt = ancIt->next;
     }
 

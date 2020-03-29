@@ -8,13 +8,13 @@ static fnoreturn void runAllTests(sp_Action* a, sp_Promise* p){
     spTest_MemPool(a, p);
     spTest_SymPool(a, p);
     spTest_MethodBuilder(a, p);
-    p->yieldRaw(p, NULL);
+    p->yield(p, NULL);
 }
 
 int main(void){
     sp_Action a = {.execute = runAllTests};
     void* r; sp_Error* e;
-    if(sp_tryRaw(&a, &r, &e)){
+    if(sp_try(&a, &r, &e)){
         printf("PASSED\n");
         return 0;
     }

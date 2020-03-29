@@ -18,9 +18,9 @@ typedef struct sp_Worker  sp_Worker;
 // allocated externally to the GC system and simply linked into
 // and unlinked from the ObjPool's anchor list.
 struct sp_Anchor {
-    sp_Anchor*      next;
-    sp_Anchor**     link;
-    sp_Ptr volatile obj;
+    sp_Anchor*       next;
+    sp_Anchor**      link;
+    sp_Ptr volatile* ptr;
 };
 
 // Workers represent external threads that will be accessing objects

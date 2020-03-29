@@ -24,8 +24,7 @@ struct sp_Action {
 
 struct sp_Result {
     enum {
-        sp_RESULT_RAW,
-        sp_RESULT_OBJ,
+        sp_RESULT_VAL,
         sp_RESULT_ERR
     } type;
     union {
@@ -53,8 +52,7 @@ struct sp_Defer {
 };
 
 struct sp_Promise {
-    pnoreturn void (*yieldRaw)(sp_Promise* p,  void* rawPtr);
-    pnoreturn void (*yieldObj)(sp_Promise* p, sp_Ptr objPtr);
+    pnoreturn void (*yield)(sp_Promise* p,  void* v);
     pnoreturn void (*abort)(sp_Promise* p, sp_Error* e);
 
     sp_Future* (*getFuture)(sp_Promise* p);
@@ -69,7 +67,6 @@ struct sp_Promise {
 
 
 
-bool sp_tryRaw(sp_Action* action, void** res, sp_Error** err);
-bool sp_tryObj(sp_Action* action, sp_Ptr* res, sp_Error** err);
+bool sp_try(sp_Action* action, void** res, sp_Error** err);
 
 #endif // sp_Promise_h
