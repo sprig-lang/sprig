@@ -1,8 +1,10 @@
 #ifndef sp_Promise_h
 #define sp_Promise_h
 #include "sp_Common.h"
+#include "sp_Object.h"
 
 typedef struct sp_Promise sp_Promise;
+typedef struct sp_Future sp_Future;
 typedef struct sp_Result sp_Result;
 typedef struct sp_Error sp_Error;
 typedef struct sp_Action sp_Action;
@@ -22,11 +24,26 @@ struct sp_Action {
 
 struct sp_Result {
     enum {
-        sp_RESULT_UNAVAIL,
-        sp_RESULT_SUCCESS,
-        sp_RESULT_FAILED
-    } status;
-    void* value;
+        sp_RESULT_RAW,
+        sp_RESULT_OBJ,
+        sp_RESULT_ERR
+    } type;
+    union {
+        void*     raw;
+        sp_Ptr    obj;
+        sp_Error* err;
+    } value;
+};
+#define sp_result_raw(PTR) (sp_Result)
+
+struct sp_Future {
+    enum {
+        sp_FUTURE_PENDING,
+        sp_FUTURE_FINISHED
+    } volatile status;
+
+    sp_Result* (*getResult)(sp_Future*);
+    void (*finl)(sp_Future*);
 };
 
 struct sp_Defer {
@@ -36,19 +53,23 @@ struct sp_Defer {
 };
 
 struct sp_Promise {
-    pnoreturn void (*complete)(sp_Promise* p, void* v);
+    pnoreturn void (*yieldRaw)(sp_Promise* p,  void* rawPtr);
+    pnoreturn void (*yieldObj)(sp_Promise* p, sp_Ptr objPtr);
     pnoreturn void (*abort)(sp_Promise* p, sp_Error* e);
 
-    sp_Result* (*getResult)(sp_Promise* p);
-    
+    sp_Future* (*getFuture)(sp_Promise* p);
+
     void (*onComplete)(sp_Promise* p, sp_Defer* d);
     void (*onAbort)(sp_Promise* p, sp_Defer* d);
     void (*beforeExit)(sp_Promise* p, sp_Defer* d);
     void (*cancelDefer)(sp_Promise* p, sp_Defer* d);
+
+    void (*finl)(sp_Promise* p);
 };
 
 
 
-bool sp_try(sp_Action* action, void** out);
+bool sp_tryRaw(sp_Action* action, void** res, sp_Error** err);
+bool sp_tryObj(sp_Action* action, sp_Ptr* res, sp_Error** err);
 
 #endif // sp_Promise_h

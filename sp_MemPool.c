@@ -110,17 +110,17 @@ static fnoreturn void spTest_MemPool_all(sp_Action* a, sp_Promise* p){
     spTest_MemPool_alloc(a, p);
     spTest_MemPool_allocAligned(a, p);
     spTest_MemPool_destruction(a, p);
-    p->complete(p, NULL);
+    p->yieldRaw(p, NULL);
 }
 
 void spTest_MemPool(sp_Action* a, sp_Promise* p) {
     TestAction ta = {.actionHdr = { .execute = spTest_MemPool_all } };
-    void* r;
-    if(sp_try((sp_Action*)&ta, &r)){
-        p->complete(p, r);
+    void* r; sp_Error* e;
+    if(sp_tryRaw((sp_Action*)&ta, &r, &e)){
+        p->yieldRaw(p, r);
     }
     else {
-        p->abort(p, r);
+        p->abort(p, e);
     }
 }
 

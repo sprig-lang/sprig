@@ -4,10 +4,11 @@
 #include "sp_Visitor.h"
 #include "sp_Index.h"
 
-typedef struct   sp_Engine sp_Engine;
-typedef struct   sp_Class  sp_Class;
-typedef struct   sp_Method sp_Method;
-typedef struct   sp_SrcLoc sp_SrcLoc;
+typedef struct   sp_Compiler sp_Compiler;
+typedef struct   sp_Engine   sp_Engine;
+typedef struct   sp_Class    sp_Class;
+typedef struct   sp_Method   sp_Method;
+typedef struct   sp_SrcLoc   sp_SrcLoc;
 typedef uint32_t sp_Instr;
 typedef enum     sp_OpCode sp_OpCode;
 

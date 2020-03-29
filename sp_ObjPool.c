@@ -63,7 +63,7 @@ static void ScanVisitor_visit(sp_Visitor* vis, void* pptr);
 
 static void scanFrame(sp_ObjPool* op, RealObject* root) {
     root->mark = true;
-    if(root->part)
+    if(root == NULL || root->part)
         return;
     
     ScanVisitor vis = {
@@ -83,11 +83,11 @@ static void scanFrame(sp_ObjPool* op, RealObject* root) {
 }
 
 static void ScanVisitor_visit(sp_Visitor* vis, void* pptr) {
-    sp_Ptr ptr = *((sp_Ptr**)pptr);
+    sp_Ptr ptr = *((sp_Ptr*)pptr);
     RealObject* obj = (RealObject*)sp_ptrToObj(ptr);
     ScanVisitor* sv = (ScanVisitor*)vis;
 
-    if(obj->mark)
+    if(obj == NULL || obj->mark)
         return;
 
     if(sv->top >= GC_SCAN_FRAME_SIZE){
@@ -106,7 +106,7 @@ static void doGc(sp_ObjPool* op){
     // Scan everything, starting at roots
     sp_Anchor* ancIt = op->ancs;
     while(ancIt){
-        scanFrame(op, ancIt->obj);
+        scanFrame(op, (RealObject*)sp_ptrToObj(ancIt->obj));
         ancIt = ancIt->next;
     }
 
@@ -115,7 +115,7 @@ static void doGc(sp_ObjPool* op){
     RealObject* objIt = op->objs;
     while(objIt) {
         RealObject* obj = objIt;
-        objIt = (RealObject*)objIt->next;
+        objIt = (RealObject*)(uintptr_t)objIt->next;
 
         if(obj->mark) {
             obj->next = (uintptr_t)live & RealObject_NEXT_MASK;
@@ -184,7 +184,7 @@ sp_ObjPool* sp_createObjPool(sp_MemPool* mp, sp_Promise* p) {
     return op;
 }
 
-sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p) {
+void sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p) {
 
     #define FINL_ERROR &(sp_Error){                         \
         .tag = "OBJ_POOL_FINL",                             \
@@ -200,14 +200,14 @@ sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p) {
         p->abort(p, FINL_ERROR);
     
     // Wait for GC thread to finish up
-    if(thrd_join(&op->gcThread, NULL) != thrd_success)
+    if(thrd_join(op->gcThread, NULL) != thrd_success)
         p->abort(p, FINL_ERROR);
     
     // Finalize all remaining objects
     RealObject* it = op->objs;
     while(it){
         RealObject* obj = it;
-        it = (sp_Object*)it->next;
+        it = (RealObject*)(uintptr_t)it->next;
 
         sp_Class* cls = obj->cls;
         cls->finlInstance(cls, sp_objToPtr((sp_Object*)obj));
@@ -230,16 +230,19 @@ static sp_Worker* unlockCurrentWorker(sp_ObjPool* op, sp_Promise* p) {
     thrd_t currentThread = thrd_current();
     sp_Worker* wkr = op->wkrs;
     while(wkr) {
-        if(thrd_equal(&wkr->thread, &currentThread)){
+        if(thrd_equal(wkr->thread, currentThread)){
             // Unlock this worker's execution lock to allow for GC to proceed
             if(mtx_unlock(&wkr->lock) != thrd_success)
                 p->abort(p, SYNC_ERROR);
+            break;
         }
         
         wkr = wkr->next;
     }
     if(wkr == NULL)
         p->abort(p, WORKER_ERROR);
+    
+    return wkr;
 }
 
 static void triggerGc(sp_ObjPool* op, size_t need, sp_Promise* p){

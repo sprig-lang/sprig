@@ -31,7 +31,7 @@ struct sp_Worker {
     sp_Worker**    link;
     
     thrd_t thread;
-    cnd_t  lock;
+    mtx_t  lock;
 };
 
 // Only sp_objAlloc, sp_objCommit, sp_linkAnchor, sp_unlinkAnchor, and sp_forceGc
@@ -39,7 +39,7 @@ struct sp_Worker {
 // engine initialization and finalization, and all from the same thread
 
 sp_ObjPool* sp_createObjPool(sp_MemPool* mp, sp_Promise* p);
-sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p);
+void sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p);
 
 sp_Ptr sp_objAlloc(sp_ObjPool* op, sp_Class* cls, sp_Promise* p);
 void   sp_objCommit(sp_ObjPool* op, sp_Ptr obj, sp_Promise* p);

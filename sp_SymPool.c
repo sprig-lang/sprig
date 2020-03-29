@@ -165,17 +165,17 @@ static fnoreturn void spTest_SymPool_all(sp_Action* a, sp_Promise* p){
     spTest_SymPool_getSym(a, p);
     spTest_SymPool_getStr(a, p);
     spTest_SymPool_destruction(a, p);
-    p->complete(p, NULL);
+    p->yieldRaw(p, NULL);
 }
 
 void spTest_SymPool(sp_Action* a, sp_Promise* p) {
     TestAction ta = {.a = { .execute = spTest_SymPool_all } };
-    void* r;
-    if(sp_try((sp_Action*)&ta, &r)){
-        p->complete(p, r);
+    void* r; sp_Error* e;
+    if(sp_tryRaw((sp_Action*)&ta, &r, &e)){
+        p->yieldRaw(p, r);
     }
     else {
-        p->abort(p, r);
+        p->abort(p, e);
     }
 }
 #endif
