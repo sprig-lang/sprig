@@ -1,7 +1,6 @@
 #ifndef sp_Class_h
 #define sp_Class_h
 #include "sp_Object.h"
-#include "sp_ObjPool.h"
 #include "sp_Visitor.h"
 #include "sp_Index.h"
 
@@ -20,9 +19,6 @@ struct sp_SrcLoc {
 };
 
 struct sp_Class {
-    // Classes are objects
-    sp_Object obj;
-
     // Source location
     sp_SrcLoc loc;
 
@@ -44,12 +40,12 @@ struct sp_Class {
 
     // Constants
     unsigned constCount;
-    sp_Ref*  constArray;
+    sp_Ptr*  constArray;
     
     // Object creation, finalization, and traversal functions
-    void (*makeInstance)(sp_Ref r, sp_Engine* eng);
-    void (*finlInstance)(sp_Ref r, sp_Engine* eng);
-    void (*travInstance)(sp_Ref r, sp_Visitor* v);
+    void (*makeInstance)(sp_Class* cls, sp_Ptr r);
+    void (*finlInstance)(sp_Class* cls, sp_Ptr r);
+    void (*travInstance)(sp_Class* cls, sp_Ptr r, sp_Visitor* vis);
 
     // Free this class
     void (*destroy)(sp_Class* cls, sp_Compiler* com);

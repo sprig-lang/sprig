@@ -6,7 +6,7 @@
 
 #define sp_assert(COND, P) do {                     \
     if(!(COND))                                     \
-        (P)->cancel((P), &(sp_Error){               \
+        (P)->abort((P), &(sp_Error){               \
             .tag = "ASSERT_FAILURE",                \
             .msg = "Assertion (" #COND ") failed",  \
             .src = SRC_LOCATION                     \

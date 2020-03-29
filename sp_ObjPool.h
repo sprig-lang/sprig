@@ -3,36 +3,62 @@
 #include "sp_Promise.h"
 #include "sp_Visitor.h"
 #include "sp_Object.h"
+#include "sp_Class.h"
 #include "sp_MemPool.h"
+#include <tinycthread.h>
 
 typedef struct sp_Class   sp_Class;
 typedef struct sp_ObjPool sp_ObjPool;
 typedef struct sp_Anchor  sp_Anchor;
+typedef struct sp_Worker  sp_Worker;
 
-// Type for GCable object pointers, sp_FakeType_ObjData isn't a real type,
-// not defined anywhere in the code, the name is just used as a tag
-// to distinguish from other struct pointers
-typedef struct sp_FakeType_ObjData* sp_Ref;
 
-struct sp_ObjPool {
-    sp_Ref (*alloc)(sp_ObjPool* op, sp_Class* cls, sp_Promise* p);
-    void   (*sweep)(sp_ObjPool* from, sp_ObjPool* to, sp_Promise* p);
-    void   (*addAnchor)(sp_ObjPool* op, sp_Anchor* anc);
-    void   (*remAnchor)(sp_ObjPool* op, sp_Anchor* anc);
-    void   (*traverse)(sp_ObjPool* op, sp_Visitor* vis);
-    void*  (*destroy)(sp_ObjPool* op);
-    void   (*lock)(sp_ObjPool* op, sp_Promise* p);
-    void   (*unlock)(sp_ObjPool* op, sp_Promise* p);
-};
-
+// Anchors are used to add root pointers to the GC system, they
+// can be used as temporary or permanent roots.  Anchors are
+// allocated externally to the GC system and simply linked into
+// and unlinked from the ObjPool's anchor list.
 struct sp_Anchor {
     sp_Anchor*      next;
     sp_Anchor**     link;
-    sp_Ref volatile obj;
+    sp_Ptr volatile obj;
 };
 
-sp_ObjPool* sp_createGlobalHeap(sp_MemPool* mp, sp_Promise* p);
-sp_ObjPool* sp_createTaskHeap(sp_ObjPool* op, sp_Promise* p);
+// Workers represent external threads that will be accessing objects
+// provided by this pool, and allow the pool to pause the thread to
+// work on GC.
+struct sp_Worker {
+    sp_Worker*     next;
+    sp_Worker**    link;
+    
+    thrd_t thread;
+    cnd_t  lock;
+    bool   paused;
+};
+
+// Only object allocation/commit and anchor linkage functions are thread safe
+// in this module, all other functions should only be called during engine
+// initialization and finalization, and all from the same thread
+
+sp_ObjPool* sp_createObjPool(sp_MemPool* mp, sp_Promise* p);
+sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p);
+
+sp_Ptr sp_objAlloc(sp_ObjPool* op, sp_Class* cls, sp_Promise* p);
+void   sp_objCommit(sp_ObjPool* op, sp_Ptr obj, sp_Promise* p);
+
+void sp_linkAnchor(sp_ObjPool* op, sp_Anchor* anc, sp_Promise* p);
+void sp_unlinkAnchor(sp_ObjPool* op, sp_Anchor* anc, sp_Promise* p);
+
+void sp_linkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p);
+void sp_unlinkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p);
+
+typedef struct {
+    sp_Defer    d;
+    sp_ObjPool* op;
+    sp_Anchor*  anc;
+    sp_Promise* p;
+} sp_UnlinkAnchorDefer;
+void sp_UnlinkAnchorDefer_execute(sp_Defer* d);
+#define sp_deferredUnlinkAnchor(OP, ANC, P) (sp_Defer*)&(sp_UnlinkAnchorDefer){.d = {.execute = sp_UnlinkAnchorDefer_execute}, .op = (OP), .anc = (ANC), .p = (P)}
 
 
 #endif // sp_ObjPool_h

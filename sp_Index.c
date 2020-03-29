@@ -13,20 +13,20 @@ struct sp_Index {
 
 sp_Index* sp_createIndex(sp_Engine* eng, sp_Promise* p) {
     sp_Index* idx = sp_memAlloc(eng->mp, sizeof(sp_Index), 0, p);
-    sp_Defer* freeIdxDefer = sp_deferedFree(eng->mp, idx);
-    p->onCancel(p, freeIdxDefer);
+    sp_Defer* freeIdxDefer = sp_deferredFree(eng->mp, idx);
+    p->onAbort(p, freeIdxDefer);
 
     unsigned cap = 7;
 
     sp_Sym* keys = sp_memAlloc(eng->mp, sizeof(sp_Sym)*cap, 0, p);
-    sp_Defer* freeKeysDefer = sp_deferedFree(eng->mp, keys);
-    p->onCancel(p, freeKeysDefer);
+    sp_Defer* freeKeysDefer = sp_deferredFree(eng->mp, keys);
+    p->onAbort(p, freeKeysDefer);
     for(unsigned i = 0 ; i < cap ; i++)
         keys[i] = SYM_MAX;
 
     unsigned* locs = sp_memAlloc(eng->mp, sizeof(unsigned)*cap, 0, p);
-    sp_Defer* freeLocsDefer = sp_deferedFree(eng->mp, locs);
-    p->onCancel(p, freeLocsDefer);
+    sp_Defer* freeLocsDefer = sp_deferredFree(eng->mp, locs);
+    p->onAbort(p, freeLocsDefer);
 
 
     idx->eng  = eng;
@@ -60,7 +60,7 @@ static uint32_t hashSym(sp_Sym sym){
 
 static void growIdx(sp_Index* idx, sp_Promise* p){
     if(idx->cap >= UINT_MAX / 2){
-        p->cancel(p, &(sp_Error){
+        p->abort(p, &(sp_Error){
             .tag = "MAX_INDEX_CAPACITY_EXCEEDED",
             .msg = "Index has exceeded max capacity",
             .src = SRC_LOCATION
@@ -70,12 +70,12 @@ static void growIdx(sp_Index* idx, sp_Promise* p){
     unsigned cap = idx->cap*2;
 
     sp_Sym* keys = sp_memAlloc(idx->eng->mp, sizeof(sp_Sym)*cap, 0, p);
-    sp_Defer* freeKeysDefer = sp_deferedFree(idx->eng->mp, keys);
-    p->onCancel(p, freeKeysDefer);
+    sp_Defer* freeKeysDefer = sp_deferredFree(idx->eng->mp, keys);
+    p->onAbort(p, freeKeysDefer);
 
     unsigned* locs = sp_memAlloc(idx->eng->mp, sizeof(unsigned)*cap, 0, p);
-    sp_Defer* freeLocsDefer = sp_deferedFree(idx->eng->mp, locs);
-    p->onCancel(p, freeLocsDefer);
+    sp_Defer* freeLocsDefer = sp_deferredFree(idx->eng->mp, locs);
+    p->onAbort(p, freeLocsDefer);
 
 
     sp_memFree(idx->eng->mp, idx->keys);

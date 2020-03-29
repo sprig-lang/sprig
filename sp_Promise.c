@@ -8,16 +8,16 @@ typedef struct {
 
     jmp_buf* jmp;
     void* result;
-    bool  cancelled;
+    bool  aborted;
 
-    sp_Defer* onCancelDefers;
+    sp_Defer* onAbortDefers;
     sp_Defer* onCompleteDefers;
     sp_Defer* beforeExitDefers;
 } TryPromise;
 
 static fnoreturn void complete(sp_Promise* p, void* v) {
     TryPromise* tp = (TryPromise*)p;
-    tp->cancelled = false;
+    tp->aborted = false;
     tp->result    = v;
     jmp_buf* jmp  = tp->jmp;
 
@@ -37,13 +37,13 @@ static fnoreturn void complete(sp_Promise* p, void* v) {
     longjmp(*jmp, 1);
 }
 
-static fnoreturn void cancel(sp_Promise* p, sp_Error* e){
+static fnoreturn void abort(sp_Promise* p, sp_Error* e){
     TryPromise* tp = (TryPromise*)p;
-    tp->cancelled = true;
+    tp->aborted = true;
     tp->result    = e;
     jmp_buf* jmp  = tp->jmp;
 
-    sp_Defer* it = tp->onCancelDefers;
+    sp_Defer* it = tp->onAbortDefers;
     while(it){
         sp_Defer* d = it;
         it = it->next;
@@ -64,9 +64,9 @@ static void onComplete(sp_Promise* p, sp_Defer* d){
     NL_LIST_LINK(d, &tp->onCompleteDefers);
 }
 
-static void onCancel(sp_Promise* p, sp_Defer* d){
+static void onAbort(sp_Promise* p, sp_Defer* d){
     TryPromise* tp = (TryPromise*)p;
-    NL_LIST_LINK(d, &tp->onCancelDefers);
+    NL_LIST_LINK(d, &tp->onAbortDefers);
 }
 
 static void beforeExit(sp_Promise* p, sp_Defer* d){
@@ -84,16 +84,16 @@ bool sp_try(sp_Action* action, void** out) {
         .jmp = &jmp,
         .promiseHdr = {
             .complete = complete,
-            .cancel = cancel,
+            .abort = abort,
             .onComplete = onComplete,
-            .onCancel = onCancel,
+            .onAbort = onAbort,
             .beforeExit = beforeExit,
             .cancelDefer = cancelDefer
         }
     };
     if(setjmp(jmp)){
         *out = tp.result;
-        return !tp.cancelled;
+        return !tp.aborted;
     }
     action->execute(action, (sp_Promise*)&tp);
     assert(false);

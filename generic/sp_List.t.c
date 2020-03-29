@@ -20,8 +20,8 @@ struct sp_ListT(T) {
 
 static inline sp_ListT(T)* sp_ListF(T, create)(sp_MemPool* mp, sp_Promise* p) {
     sp_ListT(T)* ls = sp_memAlloc(mp, sizeof(sp_ListT(T)), 0, p);
-    sp_Defer* d = sp_deferedFree(mp, ls);
-    p->onCancel(p, d);
+    sp_Defer* d = sp_deferredFree(mp, ls);
+    p->onAbort(p, d);
 
     unsigned cap = 7;
     T* buf = sp_memAlloc(mp, sizeof(T)*cap, 0, p);
@@ -57,13 +57,13 @@ static inline void sp_ListF(T, append)(sp_ListT(T)* ls, T val, sp_Promise* p) {
 
 static inline T sp_ListF(T, get)(sp_ListT(T)* ls, unsigned idx, sp_Promise* p) {
     if(idx >= ls->cnt)
-        p->cancel(p, &LIST_INDEX_OUT_OF_RANGE_ERROR);
+        p->abort(p, &LIST_INDEX_OUT_OF_RANGE_ERROR);
     return ls->buf[idx];
 }
 
 static inline void sp_ListF(T, set)(sp_ListT(T)* ls, unsigned idx, T val, sp_Promise* p) {
     if(idx >= ls->cnt)
-        p->cancel(p, &LIST_INDEX_OUT_OF_RANGE_ERROR);
+        p->abort(p, &LIST_INDEX_OUT_OF_RANGE_ERROR);
     ls->buf[idx] = val;
 }
 

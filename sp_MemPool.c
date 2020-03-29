@@ -41,7 +41,7 @@ void* sp_memAlloc(sp_MemPool* mp, size_t sz, unsigned alignment, sp_Promise* p) 
         mem = aligned_alloc(alignment, pad + sz);
     }
     if(mem == NULL){
-        p->cancel(p, &ALLOC_ERROR);
+        p->abort(p, &ALLOC_ERROR);
     }
     return mem;
 }
@@ -71,7 +71,7 @@ static void spTest_MemPool_creation(sp_Action* a, sp_Promise* p){
     TestAction* ta = (TestAction*)a;
     ta->mp = sp_createMemPool(p);
     ta->td = (TestDefer){.d = {.execute = TestDefer_execute}, .mp = ta->mp};
-    p->onCancel(p, (sp_Defer*)&ta->td);
+    p->onAbort(p, (sp_Defer*)&ta->td);
 }
 
 static void spTest_MemPool_destruction(sp_Action* a, sp_Promise* p){
@@ -120,7 +120,7 @@ void spTest_MemPool(sp_Action* a, sp_Promise* p) {
         p->complete(p, r);
     }
     else {
-        p->cancel(p, r);
+        p->abort(p, r);
     }
 }
 

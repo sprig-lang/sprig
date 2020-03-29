@@ -27,10 +27,10 @@ struct sp_Defer {
 
 struct sp_Promise {
     pnoreturn void (*complete)(sp_Promise* p, void* v);
-    pnoreturn void (*cancel)(sp_Promise* p, sp_Error* e);
+    pnoreturn void (*abort)(sp_Promise* p, sp_Error* e);
 
     void (*onComplete)(sp_Promise* p, sp_Defer* d);
-    void (*onCancel)(sp_Promise* p, sp_Defer* d);
+    void (*onAbort)(sp_Promise* p, sp_Defer* d);
     void (*beforeExit)(sp_Promise* p, sp_Defer* d);
     void (*cancelDefer)(sp_Promise* p, sp_Defer* d);
 };

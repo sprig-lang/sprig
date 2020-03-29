@@ -32,8 +32,8 @@ static void DestroySymListDefer_execute(sp_Defer* d){
 
 sp_MethodBuilder* sp_createMethodBuilder(sp_Compiler* com, sp_Sym name, sp_SrcLoc* loc, sp_Promise* p) {
     sp_MethodBuilder* bdr = sp_memAlloc(com->mp, sizeof(sp_MethodBuilder), 0, p);
-    sp_Defer* freeBdrDefer = sp_deferedFree(com->mp, bdr);
-    p->onCancel(p, freeBdrDefer);
+    sp_Defer* freeBdrDefer = sp_deferredFree(com->mp, bdr);
+    p->onAbort(p, freeBdrDefer);
 
     sp_ListT(sp_Sym)* callParams = sp_ListF(sp_Sym, create)(com->mp, p);
     sp_Defer* destroyCallParamsDefer = (sp_Defer*)&(DestroySymListDefer){
@@ -96,21 +96,21 @@ static void Method_destroy(sp_Method* mth, sp_Compiler* com){
 
 sp_Method* sp_methodBuilderProduce(sp_MethodBuilder* bdr, sp_Promise* p) {
     sp_Method* mth = sp_memAlloc(bdr->com->mp, sizeof(sp_Method), 0, p);
-    sp_Defer* freeMthDefer = sp_deferedFree(bdr->com->mp, mth);
-    p->onCancel(p, freeMthDefer);
+    sp_Defer* freeMthDefer = sp_deferredFree(bdr->com->mp, mth);
+    p->onAbort(p, freeMthDefer);
 
     unsigned  cParamCount = sp_ListF(sp_Sym, count)(bdr->callParams);
     sp_Sym*   cParamArray = sp_memAlloc(bdr->com->mp, sizeof(sp_Sym)*cParamCount, 0, p);
-    sp_Defer* cFreeDefer  = sp_deferedFree(bdr->com->mp, cParamArray);
-    p->onCancel(p, cFreeDefer);
+    sp_Defer* cFreeDefer  = sp_deferredFree(bdr->com->mp, cParamArray);
+    p->onAbort(p, cFreeDefer);
 
     for(unsigned i = 0 ; i < cParamCount ; i++)
         cParamArray[i] = sp_ListF(sp_Sym, get)(bdr->callParams, i, p);
     
     unsigned  aParamCount = sp_ListF(sp_Sym, count)(bdr->activationParams);
     sp_Sym*   aParamArray = sp_memAlloc(bdr->com->mp, sizeof(sp_Sym)*cParamCount, 0, p);
-    sp_Defer* aFreeDefer  = sp_deferedFree(bdr->com->mp, aParamArray);
-    p->onCancel(p, aFreeDefer);
+    sp_Defer* aFreeDefer  = sp_deferredFree(bdr->com->mp, aParamArray);
+    p->onAbort(p, aFreeDefer);
     for(unsigned i = 0 ; i < aParamCount ; i++)
         aParamArray[i] = sp_ListF(sp_Sym, get)(bdr->activationParams, i, p);
     
@@ -190,14 +190,14 @@ static fnoreturn void spTest_MethodBuilder_build(sp_Action* a, sp_Promise* p){
         .d = { .execute = DestroyMemPoolDefer_execute },
         .mp = mp
     };
-    p->onCancel(p, destroyMemPoolDefer);
+    p->onAbort(p, destroyMemPoolDefer);
 
     sp_SymPool* sp = sp_createSymPool(mp, p);
     sp_Defer* destroySymPoolDefer = (sp_Defer*)&(DestroySymPoolDefer){
         .d = { .execute = DestroySymPoolDefer_execute },
         .sp = sp
     };
-    p->onCancel(p, destroySymPoolDefer);
+    p->onAbort(p, destroySymPoolDefer);
 
     // TODO
     sp_ObjPool* op = NULL;
@@ -210,7 +210,7 @@ static fnoreturn void spTest_MethodBuilder_build(sp_Action* a, sp_Promise* p){
         .d = { .execute = DestroyMethodBuilderDefer_execute },
         .mb = bdr
     };
-    p->onCancel(p, destroyMethodBuilderDefer);
+    p->onAbort(p, destroyMethodBuilderDefer);
 
     for(unsigned i = 0; i < 20 ; i++){
         char pname[4] = {'a', '0' + i/10, '0' + i%10 , '\0'};
@@ -238,7 +238,7 @@ static fnoreturn void spTest_MethodBuilder_build(sp_Action* a, sp_Promise* p){
         .mth = mth,
         .com = &com
     };
-    p->onCancel(p, destroyMethodDefer);
+    p->onAbort(p, destroyMethodDefer);
 
 
     sp_assert(mth->aParamCount == 100, p);
@@ -272,7 +272,7 @@ void spTest_MethodBuilder(sp_Action* a, sp_Promise* p) {
         p->complete(p, r);
     }
     else {
-        p->cancel(p, r);
+        p->abort(p, r);
     }
 }
 

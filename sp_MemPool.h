@@ -21,7 +21,7 @@ struct sp_FreeDefer {
     void*       mem;
 };
 void sp_FreeDefer_execute(sp_Defer* d);
-#define sp_deferedFree(MP, MEM) (sp_Defer*)&(sp_FreeDefer){.d = {.execute = sp_FreeDefer_execute}, .mp = (MP), .mem = (MEM)}
+#define sp_deferredFree(MP, MEM) (sp_Defer*)&(sp_FreeDefer){.d = {.execute = sp_FreeDefer_execute}, .mp = (MP), .mem = (MEM)}
 
 struct sp_FreeVisitor {
     sp_Visitor  v;

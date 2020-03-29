@@ -24,7 +24,7 @@ static void FreeDefer_execute(sp_Defer* d){
 sp_SymPool* sp_createSymPool(sp_MemPool* mp, sp_Promise* p) {
     sp_SymPool* sp = sp_memAlloc(mp, sizeof(sp_SymPool), 0, p);
     FreeDefer d = {.d = {.execute = FreeDefer_execute }, .mp = mp, .mem = sp};
-    p->onCancel(p, (sp_Defer*)&d);
+    p->onAbort(p, (sp_Defer*)&d);
 
     size_t cap = 256;
     char*  buf = sp_memAlloc(mp, cap, 0, p);
@@ -65,7 +65,7 @@ sp_Sym sp_getSym(sp_SymPool* sp, char const* str, sp_Promise* p) {
 
     memcpy(&sp->strBuf[sp->strBufTop], str, len);
     if(sp->strBufTop >= SYM_MAX){
-        p->cancel(p, &(sp_Error){
+        p->abort(p, &(sp_Error){
             .tag = "SYM_MAX",
             .msg = "Symbol space is full",
             .src = SRC_LOCATION
@@ -81,7 +81,7 @@ sp_Sym sp_getSym(sp_SymPool* sp, char const* str, sp_Promise* p) {
 char const* sp_getStr(sp_SymPool* sp, sp_Sym sym, sp_Promise* p) {
     size_t loc = (size_t)sym;
     if(loc >= sp->strBufTop || (loc != 0 && sp->strBuf[loc] != '\0')){
-        p->cancel(p, &(sp_Error){
+        p->abort(p, &(sp_Error){
             .tag = "INVALID_SYM",
             .msg = "Invalid symbol",
             .src = SRC_LOCATION
@@ -120,7 +120,7 @@ static void spTest_SymPool_creation(sp_Action* a, sp_Promise* p){
 
     ta->sp = sp;
     ta->td = (TestDefer){.d = {.execute = TestDefer_execute}, .sp = sp};
-    p->onCancel(p, (sp_Defer*)&ta->td);
+    p->onAbort(p, (sp_Defer*)&ta->td);
 }
 
 static void spTest_SymPool_destruction(sp_Action* a, sp_Promise* p){
@@ -175,7 +175,7 @@ void spTest_SymPool(sp_Action* a, sp_Promise* p) {
         p->complete(p, r);
     }
     else {
-        p->cancel(p, r);
+        p->abort(p, r);
     }
 }
 #endif
