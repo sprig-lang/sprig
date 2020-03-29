@@ -41,7 +41,7 @@ struct sp_Future {
         sp_FUTURE_FINISHED
     } volatile status;
 
-    sp_Result* (*getResult)(sp_Future*);
+    sp_Result (*getResult)(sp_Future*);
     void (*finl)(sp_Future*);
 };
 
