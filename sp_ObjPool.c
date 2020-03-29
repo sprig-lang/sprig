@@ -38,6 +38,12 @@ struct sp_ObjPool {
     RealObject* objs;
 };
 
+#define SYNC_ERROR &(sp_Error){                         \
+    .tag = "OBJ_POOL_SYNC",                             \
+    .src = SRC_LOCATION,                                \
+    .msg = "Thread synchronization error"               \
+}
+
 static inline size_t calcMemToAllocateBeforeNextGc(size_t currentlyAllocated) {
     if(currentlyAllocated == 0)
         return 1024;
@@ -126,20 +132,14 @@ static void doGc(sp_ObjPool* op){
 }
 
 static int gcThread(void* arg) {
-    #define GC_ERROR &(sp_Error){                           \
-        .tag = "OBJ_POOL_GC",                               \
-        .src = SRC_LOCATION,                                \
-        .msg = "GC is broken"                               \
-    }
-
     sp_ObjPool* op = arg;
     while(true){
         if(mtx_lock(&op->lock) != thrd_success){
-            op->gcError = GC_ERROR;
+            op->gcError = SYNC_ERROR;
             return 0;
         }
         if(cnd_wait(&op->gcCond, &op->lock) != thrd_success){
-            op->gcError = GC_ERROR;
+            op->gcError = SYNC_ERROR;
             return 0;
         }
         if(!op->gcContinue)
@@ -148,7 +148,7 @@ static int gcThread(void* arg) {
         doGc(op);
 
         if(mtx_unlock(&op->lock) != thrd_success){
-            op->gcError = GC_ERROR;
+            op->gcError = SYNC_ERROR;
             return 0;
         }
     }
@@ -220,46 +220,62 @@ sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p) {
     sp_memFree(op->mp, op);
 }
 
-sp_Ptr sp_allocObj(sp_ObjPool* op, sp_Class* cls, sp_Promise* p) {
-    #define ALLOC_ERROR &(sp_Error){                        \
-        .tag = "OBJ_POOL_ALLOC",                            \
+static sp_Worker* unlockCurrentWorker(sp_ObjPool* op, sp_Promise* p) {
+    #define WORKER_ERROR &(sp_Error){                       \
+        .tag = "OBJ_POOL_WORKER_REG",                       \
         .src = SRC_LOCATION,                                \
-        .msg = "Error allocating object"                    \
+        .msg = "Current thread not registered as worker"    \
     }
 
-    if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, ALLOC_ERROR);
-    if(op->gcError)
-        p->abort(p, op->gcError);
-    
-    size_t need = op->memAllocated + cls->fullObjectSize;
-    if(need  >= op->memToAllocateBeforeNextGc) {
-
-        // Tell the GC thread that the current thread is already paused, waiting for GC
-        thrd_t currentThread = thrd_current();
-        sp_Worker* wkr = op->wkrs;
-        while(wkr) {
-            if(thrd_equal(&wkr->thread, &currentThread))
-                wkr->paused = true;
-            
-            wkr = wkr->next;
+    thrd_t currentThread = thrd_current();
+    sp_Worker* wkr = op->wkrs;
+    while(wkr) {
+        if(thrd_equal(&wkr->thread, &currentThread)){
+            // Unlock this worker's execution lock to allow for GC to proceed
+            if(mtx_unlock(&wkr->lock) != thrd_success)
+                p->abort(p, SYNC_ERROR);
         }
+        
+        wkr = wkr->next;
+    }
+    if(wkr == NULL)
+        p->abort(p, WORKER_ERROR);
+}
+
+static void triggerGc(sp_ObjPool* op, size_t need, sp_Promise* p){
+        sp_Worker* wkr = unlockCurrentWorker(op, p);
 
         // Start a GC cycle
         if(mtx_unlock(&op->lock) != thrd_success)
-            p->abort(p, ALLOC_ERROR);
+            p->abort(p, SYNC_ERROR);
         
         if(cnd_signal(&op->gcCond) != thrd_success)
-            p->abort(p, ALLOC_ERROR);
+            p->abort(p, SYNC_ERROR);
         
         // Wait for GC to finish
         if(mtx_lock(&op->lock) != thrd_success)
-            p->abort(p, ALLOC_ERROR);
+            p->abort(p, SYNC_ERROR);
+
+        // Re-lock execution lock
+        if(mtx_lock(&wkr->lock) != thrd_success)
+            p->abort(p, SYNC_ERROR);
+
         if(op->gcError)
             p->abort(p, op->gcError);
 
         // Adjust GC trigger
         op->memToAllocateBeforeNextGc = (op->memAllocated + need)*2;
+}
+
+sp_Ptr sp_allocObj(sp_ObjPool* op, sp_Class* cls, sp_Promise* p) {
+    if(mtx_lock(&op->lock) != thrd_success)
+        p->abort(p, SYNC_ERROR);
+    if(op->gcError)
+        p->abort(p, op->gcError);
+    
+    size_t need = op->memAllocated + cls->fullObjectSize;
+    if(need  >= op->memToAllocateBeforeNextGc) {
+        triggerGc(op, need, p);
     }
 
     RealObject* obj = sp_memAlloc(op->mp, cls->fullObjectSize, 0, p);
@@ -271,20 +287,26 @@ sp_Ptr sp_allocObj(sp_ObjPool* op, sp_Class* cls, sp_Promise* p) {
     op->objs = obj;
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, ALLOC_ERROR);
+        p->abort(p, SYNC_ERROR);
 
     return sp_objToPtr((sp_Object*)obj);
 }
 
-void sp_commitObj(sp_ObjPool* op, sp_Ptr ptr, sp_Promise* p) {
-    #define COMMIT_ERROR &(sp_Error){                       \
-        .tag = "OBJ_POOL_ALLOC",                            \
-        .src = SRC_LOCATION,                                \
-        .msg = "Error committing object"                    \
-    }
-
+void sp_forceGc(sp_ObjPool* op, sp_Promise* p) {
     if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, COMMIT_ERROR);
+        p->abort(p, SYNC_ERROR);
+    if(op->gcError)
+        p->abort(p, op->gcError);
+
+    triggerGc(op, 0, p);
+
+    if(mtx_unlock(&op->lock) != thrd_success)
+        p->abort(p, SYNC_ERROR);
+}
+
+void sp_commitObj(sp_ObjPool* op, sp_Ptr ptr, sp_Promise* p) {
+    if(mtx_lock(&op->lock) != thrd_success)
+        p->abort(p, SYNC_ERROR);
     if(op->gcError)
         p->abort(p, op->gcError);
     
@@ -292,79 +314,56 @@ void sp_commitObj(sp_ObjPool* op, sp_Ptr ptr, sp_Promise* p) {
     obj->part = false;
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, COMMIT_ERROR);
+        p->abort(p, SYNC_ERROR);
 }
 
 void sp_linkAnchor(sp_ObjPool* op, sp_Anchor* anc, sp_Promise* p) {
-    #define ANCHOR_ERROR_1 &(sp_Error){                     \
-        .tag = "OBJ_POOL_ANCHOR",                           \
-        .src = SRC_LOCATION,                                \
-        .msg = "Couldn't link anchor"                       \
-    }
 
     if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, ANCHOR_ERROR_1);
+        p->abort(p, SYNC_ERROR);
     if(op->gcError)
         p->abort(p, op->gcError);
     
     NL_LIST_LINK(anc, &op->ancs);
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, ANCHOR_ERROR_1);
+        p->abort(p, SYNC_ERROR);
 }
 
 void sp_unlinkAnchor(sp_ObjPool* op, sp_Anchor* anc, sp_Promise* p) {
-    #define ANCHOR_ERROR_2 &(sp_Error){                     \
-        .tag = "OBJ_POOL_ANCHOR",                           \
-        .src = SRC_LOCATION,                                \
-        .msg = "Couldn't unlink anchor"                     \
-    }
-
     if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, ANCHOR_ERROR_2);
+        p->abort(p, SYNC_ERROR);
     if(op->gcError)
         p->abort(p, op->gcError);
     
     NL_LIST_UNLINK(anc);
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, ANCHOR_ERROR_2);
+        p->abort(p, SYNC_ERROR);
 }
 
 void sp_linkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p) {
-    #define WORKER_ERROR_1 &(sp_Error){                     \
-        .tag = "OBJ_POOL_WORKER",                           \
-        .src = SRC_LOCATION,                                \
-        .msg = "Couldn't link worker"                       \
-    }
-
     if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, WORKER_ERROR_1);
+        p->abort(p, SYNC_ERROR);
     if(op->gcError)
         p->abort(p, op->gcError);
     
     NL_LIST_LINK(wkr, &op->wkrs);
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, WORKER_ERROR_1);
+        p->abort(p, SYNC_ERROR);
 }
 
 void sp_unlinkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p) {
-    #define WORKER_ERROR_2 &(sp_Error){                     \
-        .tag = "OBJ_POOL_WORKER",                           \
-        .src = SRC_LOCATION,                                \
-        .msg = "Couldn't unlink worker"                     \
-    }
-
     if(mtx_lock(&op->lock) != thrd_success)
-        p->abort(p, WORKER_ERROR_2);
+        p->abort(p, SYNC_ERROR);
     if(op->gcError)
         p->abort(p, op->gcError);
     
     NL_LIST_UNLINK(wkr);
 
     if(mtx_unlock(&op->lock) != thrd_success)
-        p->abort(p, WORKER_ERROR_2);
+        p->abort(p, SYNC_ERROR);
 }
 
 void sp_UnlinkAnchorDefer_execute(sp_Defer* d) {

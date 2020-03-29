@@ -7,8 +7,7 @@ typedef struct {
     sp_Promise promiseHdr;
 
     jmp_buf* jmp;
-    void* result;
-    bool  aborted;
+    sp_Result result;
 
     sp_Defer* onAbortDefers;
     sp_Defer* onCompleteDefers;
@@ -17,8 +16,8 @@ typedef struct {
 
 static fnoreturn void complete(sp_Promise* p, void* v) {
     TryPromise* tp = (TryPromise*)p;
-    tp->aborted = false;
-    tp->result    = v;
+    tp->result.status = sp_RESULT_SUCCESS;
+    tp->result.value  = v;
     jmp_buf* jmp  = tp->jmp;
 
     sp_Defer* it = tp->onCompleteDefers;
@@ -39,8 +38,8 @@ static fnoreturn void complete(sp_Promise* p, void* v) {
 
 static fnoreturn void abort(sp_Promise* p, sp_Error* e){
     TryPromise* tp = (TryPromise*)p;
-    tp->aborted = true;
-    tp->result    = e;
+    tp->result.status = sp_RESULT_FAILED;
+    tp->result.value  = e;
     jmp_buf* jmp  = tp->jmp;
 
     sp_Defer* it = tp->onAbortDefers;
@@ -92,8 +91,8 @@ bool sp_try(sp_Action* action, void** out) {
         }
     };
     if(setjmp(jmp)){
-        *out = tp.result;
-        return !tp.aborted;
+        *out = tp.result.value;
+        return tp.result.status == sp_RESULT_SUCCESS;
     }
     action->execute(action, (sp_Promise*)&tp);
     assert(false);

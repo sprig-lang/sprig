@@ -32,12 +32,11 @@ struct sp_Worker {
     
     thrd_t thread;
     cnd_t  lock;
-    bool   paused;
 };
 
-// Only object allocation/commit and anchor linkage functions are thread safe
-// in this module, all other functions should only be called during engine
-// initialization and finalization, and all from the same thread
+// Only sp_objAlloc, sp_objCommit, sp_linkAnchor, sp_unlinkAnchor, and sp_forceGc
+// are thread safe in this module, all other functions should only be called during
+// engine initialization and finalization, and all from the same thread
 
 sp_ObjPool* sp_createObjPool(sp_MemPool* mp, sp_Promise* p);
 sp_ObjPool* sp_destroyObjPool(sp_ObjPool* op, sp_Promise* p);
@@ -50,6 +49,8 @@ void sp_unlinkAnchor(sp_ObjPool* op, sp_Anchor* anc, sp_Promise* p);
 
 void sp_linkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p);
 void sp_unlinkWorker(sp_ObjPool* op, sp_Worker* wkr, sp_Promise* p);
+
+void sp_forceGc(sp_ObjPool* op, sp_Promise* p);
 
 typedef struct {
     sp_Defer    d;
