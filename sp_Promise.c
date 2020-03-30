@@ -1,4 +1,5 @@
 #include "sp_Promise.h"
+#include "sp_Resource.h"
 #include <setjmp.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -14,10 +15,10 @@ typedef struct {
     sp_Defer* beforeExitDefers;
 } TryPromise;
 
-static fnoreturn void yield(sp_Promise* p, void* v) {
+static fnoreturn void yield(sp_Promise* p, sp_Resource* res) {
     TryPromise* tp = (TryPromise*)p;
-    tp->res.type = sp_RESULT_VAL;
-    tp->res.value.raw  = v;
+    tp->res.type = sp_RESULT_RES;
+    tp->res.value.res  = res;
     jmp_buf* jmp  = tp->jmp;
 
     sp_Defer* it = tp->onCompleteDefers;
@@ -91,8 +92,16 @@ bool sp_try(sp_Action* action, void** res, sp_Error** err) {
         }
     };
     if(setjmp(jmp)){
-        if(tp.res.type == sp_RESULT_VAL){
-            *res = tp.res.value.raw;
+        if(tp.res.type == sp_RESULT_RES){
+            sp_Resource* r = tp.res.value.res;
+            if(r == NULL){
+                *res = NULL;
+            }
+            else{
+                r->into(r, res);
+                if(r->finl)
+                    r->finl(r);
+            }
             return true;
         }
         else {

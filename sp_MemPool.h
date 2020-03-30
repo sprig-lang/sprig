@@ -10,6 +10,7 @@
 #include "sp_Common.h"
 #include "sp_Promise.h"
 #include "sp_Visitor.h"
+#include "sp_Resource.h"
 
 typedef struct sp_MemPool     sp_MemPool;
 typedef struct sp_FreeDefer   sp_FreeDefer;
@@ -22,6 +23,16 @@ struct sp_FreeDefer {
 };
 void sp_FreeDefer_execute(sp_Defer* d);
 #define sp_deferredFree(MP, MEM) (sp_Defer*)&(sp_FreeDefer){.d = {.execute = sp_FreeDefer_execute}, .mp = (MP), .mem = (MEM)}
+
+
+typedef struct {
+    sp_Resource r;
+    void* value;
+    sp_MemPool* mp;
+} sp_MemResource;
+void sp_MemResource_into(sp_Resource* r, void** dst);
+void sp_MemResource_finl(sp_Resource* r);
+#define sp_memResource(MP, VAL) (sp_Resource*)&(sp_MemResource){.r = {.into = sp_MemResource_into, .finl = sp_MemResource_finl}, .mp = (MP), .value = (VAL)}
 
 struct sp_FreeVisitor {
     sp_Visitor  v;

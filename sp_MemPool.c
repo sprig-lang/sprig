@@ -21,6 +21,18 @@ void sp_FreeVisitor_visit(sp_Visitor* v, void* val) {
     sp_memFree(fv->mp, val);
 }
 
+
+void sp_MemResource_into(sp_Resource* r, void** dst) {
+    *dst = ((sp_MemResource*)r)->value;
+}
+
+void sp_MemResource_finl(sp_Resource* r) {
+    sp_MemResource* mr = (sp_MemResource*)r;
+    sp_memFree(mr->mp, mr->value);
+}
+
+
+
 sp_MemPool* sp_createMemPool(sp_Promise* p){
     // dummy return value, for now we just use the standard memory pool
     return (sp_MemPool*)1;

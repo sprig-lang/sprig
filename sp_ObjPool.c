@@ -1,5 +1,6 @@
 #include "sp_ObjPool.h"
 #include "sp_MemPool.h"
+#include <assert.h>
 
 
 // This is a temporary heap/gc implementation designed to be functional
@@ -106,7 +107,7 @@ static void doGc(sp_ObjPool* op){
     // Scan everything, starting at roots
     sp_Anchor* ancIt = op->ancs;
     while(ancIt){
-        scanFrame(op, (RealObject*)sp_ptrToObj(*ancIt->ptr));
+        scanFrame(op, (RealObject*)sp_ptrToObj(ancIt->ptr));
         ancIt = ancIt->next;
     }
 
@@ -374,3 +375,38 @@ void sp_UnlinkAnchorDefer_execute(sp_Defer* d) {
     sp_unlinkAnchor(ad->op, ad->anc, ad->p);
 }
 
+typedef struct {
+    sp_Action a;
+    sp_ObjResource* r;
+} ObjResourceAction;
+static fnoreturn void ObjResourceAction_executeInit(sp_Action* a, sp_Promise* p) {
+    ObjResourceAction* ora = (ObjResourceAction*)a;
+    sp_linkAnchor(ora->r->op, &ora->r->anc, p);
+    p->yield(p, NULL);
+}
+static fnoreturn void ObjResourceAction_executeFinl(sp_Action* a, sp_Promise* p) {
+    ObjResourceAction* ora = (ObjResourceAction*)a;
+    sp_unlinkAnchor(ora->r->op, &ora->r->anc, p);
+    p->yield(p, NULL);
+}
+
+sp_ObjResource* sp_ObjResource_init(sp_ObjResource* r) {
+     void* res; sp_Error* err;
+    assert(sp_try((sp_Action*)&(ObjResourceAction){
+        .a = {.execute = ObjResourceAction_executeInit},
+        .r = (sp_ObjResource*)r
+    }, &res, &err));
+    return r;
+}
+
+void sp_ObjResource_into(sp_Resource* r, void** dst) {
+    *dst = ((sp_ObjResource*)r)->anc.ptr;
+}
+
+void sp_ObjResource_finl(sp_Resource* r) {
+     void* res; sp_Error* err;
+    assert(sp_try((sp_Action*)&(ObjResourceAction){
+        .a = {.execute = ObjResourceAction_executeFinl},
+        .r = (sp_ObjResource*)r
+    }, &res, &err));
+}

@@ -20,7 +20,7 @@ typedef struct sp_Worker  sp_Worker;
 struct sp_Anchor {
     sp_Anchor*       next;
     sp_Anchor**      link;
-    sp_Ptr volatile* ptr;
+    sp_Ptr volatile  ptr;
 };
 
 // Workers represent external threads that will be accessing objects
@@ -60,6 +60,19 @@ typedef struct {
 } sp_UnlinkAnchorDefer;
 void sp_UnlinkAnchorDefer_execute(sp_Defer* d);
 #define sp_deferredUnlinkAnchor(OP, ANC, P) (sp_Defer*)&(sp_UnlinkAnchorDefer){.d = {.execute = sp_UnlinkAnchorDefer_execute}, .op = (OP), .anc = (ANC), .p = (P)}
+
+
+
+
+typedef struct {
+    sp_Resource r;
+    sp_Anchor anc;
+    sp_ObjPool* op;
+} sp_ObjResource;
+sp_ObjResource* sp_ObjResource_init(sp_ObjResource* r);
+void sp_ObjResource_into(sp_Resource* r, void** dst);
+void sp_ObjResource_finl(sp_Resource* r);
+#define sp_objResource(OP, OBJ) (sp_Resource*)sp_ObjResource_init(&(sp_ObjResource){.r = {.into = sp_ObjResource_into, .finl = sp_ObjResource_finl}, .anc = {.ptr = obj}})
 
 
 #endif // sp_ObjPool_h

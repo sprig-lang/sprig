@@ -4,6 +4,7 @@
 #include "sp_Object.h"
 
 typedef struct sp_Promise sp_Promise;
+typedef struct sp_Resource sp_Resource;
 typedef struct sp_Future sp_Future;
 typedef struct sp_Result sp_Result;
 typedef struct sp_Error sp_Error;
@@ -15,7 +16,7 @@ struct sp_Error {
     char const* msg;
     char const* src;
 
-    void (*destroy)(sp_Error* e);
+    void (*finl)(sp_Error* e);
 };
 
 struct sp_Action {
@@ -24,13 +25,12 @@ struct sp_Action {
 
 struct sp_Result {
     enum {
-        sp_RESULT_VAL,
+        sp_RESULT_RES,
         sp_RESULT_ERR
     } type;
     union {
-        void*     raw;
-        sp_Ptr    obj;
-        sp_Error* err;
+        sp_Resource* res;
+        sp_Error*    err;
     } value;
 };
 #define sp_result_raw(PTR) (sp_Result)
@@ -52,7 +52,7 @@ struct sp_Defer {
 };
 
 struct sp_Promise {
-    pnoreturn void (*yield)(sp_Promise* p,  void* v);
+    pnoreturn void (*yield)(sp_Promise* p, sp_Resource* r);
     pnoreturn void (*abort)(sp_Promise* p, sp_Error* e);
 
     sp_Future* (*getFuture)(sp_Promise* p);
